@@ -38,6 +38,7 @@ third_party = [
     "setuptools",
     "skimage",
     "sklearn",
+    "tensordict",
     "torch",
     "torchvision",
 ]

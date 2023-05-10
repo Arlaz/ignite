@@ -8,6 +8,7 @@ import warnings
 from pathlib import Path
 from typing import Any, Callable, cast, Dict, Optional, TextIO, Tuple, Type, TypeVar, Union
 
+import tensordict
 import torch
 
 __all__ = [
@@ -34,23 +35,29 @@ def convert_tensor(
         non_blocking: convert a CPU Tensor with pinned memory to a CUDA Tensor
             asynchronously with respect to the host if possible
     """
-
-    def _func(tensor: torch.Tensor) -> torch.Tensor:
-        return tensor.to(device=device, non_blocking=non_blocking) if device is not None else tensor
-
+    
+    def _func(tensor: Union[torch.Tensor, tensordict.TensorDictBase]) -> Union[torch.Tensor, tensordict.TensorDictBase]:
+        if isinstance(tensor, tensordict.TensorDictBase):
+            return tensor.to(dest=device) if device is not None else tensor
+        elif isinstance(tensor, torch.Tensor):
+            return tensor.to(device=device, non_blocking=non_blocking) if device is not None else tensor
+        
     return apply_to_tensor(x, _func)
 
 
 def apply_to_tensor(
-    x: Union[torch.Tensor, collections.Sequence, collections.Mapping, str, bytes], func: Callable
-) -> Union[torch.Tensor, collections.Sequence, collections.Mapping, str, bytes]:
+    x: Union[torch.Tensor, tensordict.TensorDictBase, collections.Sequence, collections.Mapping, str, bytes], func: Callable
+) -> Union[torch.Tensor, tensordict.TensorDictBase, collections.Sequence, collections.Mapping, str, bytes]:
     """Apply a function on a tensor or mapping, or sequence of tensors.
 
     Args:
         x: input tensor or mapping, or sequence of tensors.
         func: the function to apply on ``x``.
     """
-    return apply_to_type(x, torch.Tensor, func)
+    if isinstance(x, tensordict.TensorDictBase):
+        return apply_to_type(x, tensordict.TensorDictBase, func)
+    else:
+        return apply_to_type(x, torch.Tensor, func)
 
 
 def apply_to_type(
